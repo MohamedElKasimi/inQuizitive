@@ -11,7 +11,7 @@ import json
 logger = logging.getLogger(__name__)
 
 # Configure Gemini model with API key
-genai.configure(api_key=settings.GOOGLE_API_KEY)
+genai.configure(api_key=settings.SECRET_KEY)
 
 def generateQuiz(request, fileId):
     if request.method != "GET":
