@@ -7,6 +7,13 @@ const config: Config = {
     "./src/app/**/*.{js,ts,jsx,tsx,mdx}",
   ],
   theme: {
+    colors:{
+      'dark-blue' : "#4335A7",
+      'light-blue' : "#80C4E9",
+      'white' : "#FFF6E9",
+      'orange' : "#FF7F3E",
+      'black': "#000000",
+    },
     extend: {
       fontFamily:{
         itim: ["var(--font-itim)"]

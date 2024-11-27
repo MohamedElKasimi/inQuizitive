@@ -7,7 +7,9 @@
   --foreground: #171717;
 }
 
-
+.nextjs-toast.nextjs-static-indicator-toast-wrapper {
+  display: none !important;
+}
 
 body {
   color: var(--foreground);
