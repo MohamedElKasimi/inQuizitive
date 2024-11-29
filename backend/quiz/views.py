@@ -48,7 +48,7 @@ def generateQuiz(request, fileId):
             "- `question`: The text of the question.\n"
             "- `options`: A list of 4 possible answers (strings).\n"
             "- `correctAnswer`: The index (0, 1, 2, or 3) of the correct answer in the options.\n\n"
-            "The questions should test key details, themes, or topics from the document."
+            "The questions should test key details, themes, or topics from the document. Make the questions increase in difficulty."
         )
 
         response = model.generate_content([prompt, uploaded_file])

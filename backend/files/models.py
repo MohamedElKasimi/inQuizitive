@@ -16,6 +16,7 @@ class Files(models.Model):
     file_type = models.CharField(max_length=4, choices=FILE_TYPES)
     upload_date = models.DateTimeField(auto_now_add=True)
     file_size = models.PositiveIntegerField(null=True, blank=True, help_text="File size in bytes")
+    high_score = models.PositiveBigIntegerField(null = True, blank = True)
     
     def __str__(self):
         return f"{self.file_name} uploaded by {self.user.username}"

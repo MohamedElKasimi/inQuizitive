@@ -67,4 +67,37 @@ export const fetchUserFiles = async () => {
     }
 };
 
+export const generateQuiz = async (fileID: number) =>{
+
+    const token = localStorage.getItem('accessToken');
+    console.group(token)
+    if (!token) {
+        throw new Error("Authentication token is missing.");
+    }
+
+    try{
+        const quizData = await api.get(`quiz/generateQuiz/${fileID}`)
+        return quizData.data
+    }catch (error){
+        console.error("Failed to retrieve quiz!", error);
+        throw error;
+    }
+
+}
+
+export const updateScore = async (fileID: number|null, score: number)=>{
+    const token = localStorage.getItem('accessToken');
+    console.group(token)
+    if (!token) {
+        throw new Error("Authentication token is missing.");
+    }
+
+    try{
+        const response = api.post('/files/updateScore/', {fileID, score});
+        console.log(response);
+    }catch(error){
+        console.log(error);
+        throw error;
+    }
+}
 export default api;

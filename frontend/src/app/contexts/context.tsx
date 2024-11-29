@@ -8,6 +8,10 @@ interface AuthContextType {
   user: any;
   login: (credentials: { username: string; password: string }) => Promise<void>;
   logout: () => void;
+  fileID: number | null;
+  setFileID: (id: number | null) => void;
+  high_score: number | null;
+  setScore: (score: number | null) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -16,7 +20,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<any>(null);
   const [accessToken, setAccessToken] = useState<string | null>(null);
   const [loading , setLoading] = useState(true)
-  const router = useRouter(); 
+  const router = useRouter();
+  const [fileID, setFileID] = useState<number | null>(null);
+  const [high_score, setScore] = useState<number | null>(null);
 
   const login = async (credentials: { username: string; password: string }) => {
     try {
@@ -45,7 +51,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, logout }}>
+    <AuthContext.Provider value={{ user, login, logout, fileID, setFileID, high_score, setScore }}>
       {children}
     </AuthContext.Provider>
   );

@@ -1,30 +1,37 @@
 "use client";
-
 import React, { useEffect, useState } from "react";
 import { fetchUserFiles, uploadFile } from "../utils/api";
 import { Box, Typography, Grid, Button, IconButton } from "@mui/material";
 import AddCircleOutlineIcon from "@mui/icons-material/AddCircleOutline";
+import QuizModal from "./modal"; // Import the modal component
 
 interface File {
   id: number;
   file_name: string;
-  file_type: string;
   file_size: number;
   upload_date: string;
+  high_score: number;
 }
 
 export default function Main() {
   const [files, setFiles] = useState<File[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState<boolean>(false); // Loading state
+  const [modalOpen, setModalOpen] = useState(false); // State to manage modal visibility
+  const [selectedFileID, setSelectedFileID] = useState<number | null>(null); // State for the selected file ID
+  const [score, setScore] = useState<number | null>(null);
 
   useEffect(() => {
     const fetchFiles = async () => {
+      setLoading(true);
       try {
         const data = await fetchUserFiles();
         setFiles(data);
       } catch (err) {
         setError("Failed to load files.");
         console.error(err);
+      } finally {
+        setLoading(false);
       }
     };
 
@@ -43,6 +50,22 @@ export default function Main() {
     }
   };
 
+  const handleOpenModal = (fileID: number, score: number | null) => {
+    setSelectedFileID(fileID); // Set the selected file ID
+    setScore(score ?? 0); // Handle null/undefined scores
+    setModalOpen(true); // Open the modal
+  };
+
+  const handleCloseModal = () => {
+    setModalOpen(false); // Close the modal
+  };
+
+  const handleSelectMode = (mode: string) => {
+    console.log("Selected Quiz Mode:", mode);
+    console.log("Selected File ID:", selectedFileID); // Access the selected file's ID
+    setModalOpen(false); // Close the modal after selecting mode
+  };
+
   return (
     <Box padding={2}>
       <Typography variant="h6" gutterBottom className="font-itim text-xl">
@@ -55,49 +78,64 @@ export default function Main() {
         </Typography>
       )}
 
-      <Grid container spacing={1} className="mt-10">
-        {files.map((file) => (
-          <Grid item xs={4} sm={3} md={2} key={file.id}>
-            <div className="flex flex-col justify-center items-center p-4 border border-gray-300 rounded-xl shadow-md">
-              <Typography className="font-itim text-sm text-center truncate">{file.file_name}</Typography>
-              <Typography className="font-itim text-xs text-gray-500">
-                Type: {file.file_type}
-              </Typography>
-              <Typography className="font-itim text-xs text-gray-500">
-                Size: {(file.file_size / 1024).toFixed(2)} KB
-              </Typography>
-              <Typography className="font-itim text-xs text-gray-500">
-                Uploaded: {new Date(file.upload_date).toLocaleDateString()}
-              </Typography>
-              <Button variant="contained" className="mt-2 w-full bg-blue-500 text-white font-itim">
-                Generate Quiz
-              </Button>
+      {loading ? (
+        <Typography className="font-itim text-center">Loading files...</Typography>
+      ) : (
+        <Grid container spacing={1} className="mt-10">
+          {files.map((file) => (
+            <Grid item xs={4} sm={3} md={2} key={file.id}>
+              <div className="flex flex-col justify-center items-center p-4 border border-gray-300 rounded-xl shadow-md">
+                <Typography className="font-itim text-sm text-center h-10 max-h-10">{file.file_name}</Typography>
+                <Typography className="font-itim text-xs text-gray-500">
+                  High Score: {file.high_score ?? 0}
+                </Typography>
+                <Typography className="font-itim text-xs text-gray-500">
+                  Uploaded: {new Date(file.upload_date).toLocaleDateString()}
+                </Typography>
+                <Button
+                  variant="contained"
+                  className="mt-2 w-full bg-orange text-white font-itim"
+                  onClick={() => handleOpenModal(file.id, file.high_score)} // Pass the file ID and score to the modal
+                >
+                  Generate Quiz
+                </Button>
+              </div>
+            </Grid>
+          ))}
+
+          {/* Upload File Card */}
+          <Grid item xs={4} sm={3} md={2}>
+            <div
+              className="flex flex-col justify-center items-center p-4 border-2 border-dashed border-gray-400 rounded-xl cursor-pointer hover:border-blue-500"
+            >
+              <label htmlFor="file-upload-input">
+                <input
+                  id="file-upload-input"
+                  type="file"
+                  accept="application/pdf" // Restrict file explorer to show only PDF files
+                  style={{ display: "none" }}
+                  onChange={handleFileUpload}
+                />
+                <IconButton component="span" className="text-blue-500 text-4xl flex justify-center align-center items-center">
+                  <AddCircleOutlineIcon />
+                </IconButton>
+                <Typography className="font-itim text-xs text-center text-gray-500 mt-2">
+                  Upload File
+                </Typography>
+              </label>
             </div>
           </Grid>
-        ))}
-
-        {/* Upload File Card */}
-        <Grid item xs={4} sm={3} md={2}>
-          <div
-            className="flex flex-col justify-center items-center p-4 border-2 border-dashed border-gray-400 rounded-xl cursor-pointer hover:border-blue-500"
-          >
-            <label htmlFor="file-upload-input">
-              <input
-                id="file-upload-input"
-                type="file"
-                style={{ display: "none" }}
-                onChange={handleFileUpload}
-              />
-              <IconButton component="span" className="text-blue-500 text-4xl">
-                <AddCircleOutlineIcon />
-              </IconButton>
-              <Typography className="font-itim text-xs text-center text-gray-500 mt-2">
-                Upload File
-              </Typography>
-            </label>
-          </div>
         </Grid>
-      </Grid>
+      )}
+
+      {/* Quiz Modal */}
+      <QuizModal
+        open={modalOpen}
+        onClose={handleCloseModal}
+        onSelectMode={handleSelectMode}
+        fileID={selectedFileID ?? -1}
+        oldScore={score}
+      />
     </Box>
   );
 }

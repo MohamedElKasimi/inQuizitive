@@ -1,4 +1,6 @@
-from django.shortcuts import render
+import json
+from django.http import JsonResponse
+from django.shortcuts import get_object_or_404, render
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
@@ -39,3 +41,24 @@ class FileListView(APIView):
         files = Files.objects.filter(user=request.user)  # Filter files uploaded by the authenticated user
         serializer = FileSerializer(files, many=True)
         return Response(serializer.data)
+    
+
+class HighScoreUpdate(APIView):
+
+    def post(self, request, *args, **kwargs):  # Add 'self' as the first argument
+        try:
+            data = request.data  # DRF provides `request.data` for parsed JSON payload
+            file_id = data.get('fileID')
+            score = data.get('score')
+
+            if not all([file_id, score]):
+                return Response({'error': 'fileID and score are required'}, status=400)
+
+            # Get the file and update the high score
+            file = get_object_or_404(Files, id=file_id)
+            file.high_score = score
+            file.save()
+
+            return Response({'message': 'High score updated', 'file_id': file.id, 'high_score': file.high_score})
+        except Exception as e:
+            return Response({'error': f'An error occurred: {str(e)}'}, status=400)
