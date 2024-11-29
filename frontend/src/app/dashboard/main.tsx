@@ -1,9 +1,10 @@
 "use client";
 import React, { useEffect, useState } from "react";
-import { fetchUserFiles, uploadFile } from "../utils/api";
-import { Box, Typography, Grid, Button, IconButton } from "@mui/material";
+import { fetchUserFiles, uploadFile, deleteFile } from "../utils/api";
+import { Box, Typography, Grid, Button, IconButton, Menu, MenuItem } from "@mui/material";
 import AddCircleOutlineIcon from "@mui/icons-material/AddCircleOutline";
-import QuizModal from "./modal"; // Import the modal component
+import MoreVertIcon from "@mui/icons-material/MoreVert";
+import QuizModal from "./modal";
 
 interface File {
   id: number;
@@ -20,6 +21,9 @@ export default function Main() {
   const [modalOpen, setModalOpen] = useState(false); // State to manage modal visibility
   const [selectedFileID, setSelectedFileID] = useState<number | null>(null); // State for the selected file ID
   const [score, setScore] = useState<number | null>(null);
+
+  const [menuAnchor, setMenuAnchor] = useState<HTMLElement | null>(null);
+  const [menuFileID, setMenuFileID] = useState<number | null>(null);
 
   useEffect(() => {
     const fetchFiles = async () => {
@@ -66,6 +70,28 @@ export default function Main() {
     setModalOpen(false); // Close the modal after selecting mode
   };
 
+  const handleMenuOpen = (event: React.MouseEvent<HTMLElement>, fileID: number) => {
+    setMenuAnchor(event.currentTarget);
+    setMenuFileID(fileID);
+  };
+
+  const handleMenuClose = () => {
+    setMenuAnchor(null);
+    setMenuFileID(null);
+  };
+
+  const handleDeleteFile = async () => {
+    if (menuFileID === null) return;
+
+    try {
+      await deleteFile(menuFileID); // Call the delete API
+      setFiles((prevFiles) => prevFiles.filter((file) => file.id !== menuFileID)); // Remove the file from state
+      handleMenuClose();
+    } catch (error) {
+      console.error("Failed to delete file", error);
+    }
+  };
+
   return (
     <Box padding={2}>
       <Typography variant="h6" gutterBottom className="font-itim text-xl">
@@ -84,7 +110,16 @@ export default function Main() {
         <Grid container spacing={1} className="mt-10">
           {files.map((file) => (
             <Grid item xs={4} sm={3} md={2} key={file.id}>
-              <div className="flex flex-col justify-center items-center p-4 border border-gray-300 rounded-xl shadow-md">
+              <div className="flex flex-col justify-center items-center p-4 border border-gray-300 rounded-xl shadow-md relative">
+                {/* Three dots menu */}
+                <IconButton
+                  size="small"
+                  className="absolute top-1 right-1"
+                  onClick={(e) => handleMenuOpen(e, file.id)}
+                >
+                  <MoreVertIcon />
+                </IconButton>
+
                 <Typography className="font-itim text-sm text-center h-10 max-h-10">{file.file_name}</Typography>
                 <Typography className="font-itim text-xs text-gray-500">
                   High Score: {file.high_score ?? 0}
@@ -127,6 +162,17 @@ export default function Main() {
           </Grid>
         </Grid>
       )}
+
+      {/* Menu for File Options */}
+      <Menu
+        anchorEl={menuAnchor}
+        open={Boolean(menuAnchor)}
+        onClose={handleMenuClose}
+      >
+        <MenuItem onClick={handleDeleteFile} className="text-red-500">
+          Delete
+        </MenuItem>
+      </Menu>
 
       {/* Quiz Modal */}
       <QuizModal

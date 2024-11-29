@@ -14,6 +14,8 @@ const config: Config = {
       'white' : "#FFF6E9",
       'orange' : "#FF7F3E",
       'black': "#000000",
+      'red': '#ee4238',
+      'green': '#00ab3d',
     },
     extend: {
       fontFamily:{

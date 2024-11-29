@@ -100,4 +100,24 @@ export const updateScore = async (fileID: number|null, score: number)=>{
         throw error;
     }
 }
+
+export const deleteFile = async (fileID: number) => {
+    const token = localStorage.getItem('accessToken');
+    console.group(token);
+    if (!token) {
+        throw new Error("Authentication token is missing.");
+    }
+
+    try {
+        const response = await api.delete(`/files/delete/${fileID}/`, {
+            headers: {
+                'Authorization': `Bearer ${token}`, // Include the authentication token
+            },
+        });
+        return response.data; // Return the response data if needed
+    } catch (error) {
+        console.error("File deletion failed", error);
+        throw error; // Throw the error for the component to handle
+    }
+};
 export default api;

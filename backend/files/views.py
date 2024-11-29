@@ -1,4 +1,5 @@
 import json
+import os
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, render
 from rest_framework.views import APIView
@@ -62,3 +63,22 @@ class HighScoreUpdate(APIView):
             return Response({'message': 'High score updated', 'file_id': file.id, 'high_score': file.high_score})
         except Exception as e:
             return Response({'error': f'An error occurred: {str(e)}'}, status=400)
+        
+class FileDeleteView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def delete(self, request, file_id):
+        # Fetch the file, ensuring it belongs to the authenticated user
+        file = get_object_or_404(Files, id=file_id, user=request.user)
+
+        # Get the file path
+        file_path = file.file.path  # Assuming the file field in the model is named 'file'
+
+        # Delete the file object from the database
+        file.delete()
+
+        # Remove the file from the filesystem
+        if os.path.exists(file_path):
+            os.remove(file_path)
+
+        return Response({'message': 'File and associated data deleted successfully'}, status=status.HTTP_204_NO_CONTENT)
