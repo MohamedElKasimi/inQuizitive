@@ -26,7 +26,7 @@ SECRET_KEY = os.getenv('GOOGLE_API_KEY')
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['https://inquizitive-liart.vercel.app/', '127.0.0.1']
+ALLOWED_HOSTS = ['https://inquizitive-liart.vercel.app/', '127.0.0.1','inquizitive-i18v.onrender.com']
 
 
 # Application definition
