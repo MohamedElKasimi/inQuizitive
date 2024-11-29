@@ -17,6 +17,10 @@ const config: Config = {
       'red': '#ee4238',
       'green': '#00ab3d',
     },
+    important: '#__next',
+      corePlugins: {
+    preflight: false,
+  },
     extend: {
       fontFamily:{
         itim: ["var(--font-itim)"]

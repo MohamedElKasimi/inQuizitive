@@ -6,6 +6,7 @@ import localFont from "next/font/local";
 import "./globals.css";
 import { Itim } from 'next/font/google'
 import { AuthProvider } from "./contexts/context";
+import AppWrapper from "./components/appwrapper";
 
 
 const geistSans = localFont({
@@ -40,8 +41,7 @@ export default function RootLayout({
     <html lang="en">
       <body
         className={`${geistSans.variable} ${geistMono.variable} ${itim.variable} antialiased`}>
-          <AuthProvider>{children}</AuthProvider>
-        
+          <AppWrapper><AuthProvider>{children}</AuthProvider></AppWrapper>
       </body>
     </html>
   );
