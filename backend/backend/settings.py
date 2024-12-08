@@ -26,7 +26,12 @@ SECRET_KEY = os.getenv('GOOGLE_API_KEY')
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['https://inquizitive-liart.vercel.app/', '127.0.0.1','inquizitive-i18v.onrender.com']
+ALLOWED_HOSTS = [
+    'localhost', 
+    '127.0.0.1', 
+    'https://inquizitive-liart.vercel.app/', 
+    'inquizitive-i18v.onrender.com'
+]
 
 
 # Application definition
@@ -44,6 +49,8 @@ INSTALLED_APPS = [
     'files',
     'users',
     'quiz',
+    'django_extensions',
+    'channels',
 ]
 
 MIDDLEWARE = [
@@ -56,6 +63,11 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'corsheaders.middleware.CorsMiddleware',
     'django.middleware.common.CommonMiddleware',
+]
+
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:8000",
+    "http://127.0.0.1:8000",
 ]
 
 CORS_ALLOW_ALL_ORIGINS = True 
@@ -79,7 +91,17 @@ TEMPLATES = [
 ]
 
 WSGI_APPLICATION = 'backend.wsgi.application'
+ASGI_APPLICATION = 'backend.asgi.application'
 
+
+CHANNEL_LAYERS = {
+    "default": {
+        "BACKEND": "channels_redis.core.RedisChannelLayer",
+        "CONFIG": {
+            "hosts": [("localhost", 6379)],
+        },
+    },
+}
 
 # Database
 # https://docs.djangoproject.com/en/4.2/ref/settings/#databases

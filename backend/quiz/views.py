@@ -1,73 +1,135 @@
-import google.generativeai as genai
-from django.http import JsonResponse, HttpResponseBadRequest
-from django.conf import settings
-from files.models import Files
-from django.shortcuts import get_object_or_404
-import os
-import logging
 import json
+import os
+import random
+import string
+import logging
+from django.shortcuts import get_object_or_404
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework import status
+from rest_framework.permissions import IsAuthenticated
+from files.models import Files
+from .models import Lobby
+import google.generativeai as genai
+from django.conf import settings
 
-# Set up logging for debugging
+# Set up logging
 logger = logging.getLogger(__name__)
 
 # Configure Gemini model with API key
 genai.configure(api_key=settings.SECRET_KEY)
 
-def generateQuiz(request, fileId):
-    if request.method != "GET":
-        logger.warning("Non-GET request made to generateQuiz")
-        return HttpResponseBadRequest({"error": "Only GET requests are allowed!"})
+class GenerateQuizView(APIView):
+    permission_classes = [IsAuthenticated]
 
-    # Fetch and validate the file object
-    try:
-        uploadedFile = get_object_or_404(Files, id=fileId)
-    except Exception as e:
-        logger.error(f"File with id {fileId} not found: {e}")
-        return JsonResponse({"error": "File not found in the database!"}, status=404)
+    def get(self, request, file_id):
+        try:
+            uploaded_file = get_object_or_404(Files, id=file_id, user=request.user)
+        except Exception as e:
+            logger.error(f"File with id {file_id} not found or does not belong to the user: {e}")
+            return Response({"error": "File not found or access denied."}, status=status.HTTP_404_NOT_FOUND)
 
-    # Ensure the file exists in the media directory
-    file_path = uploadedFile.file.path  # Use the `file` field's path
-    if not os.path.exists(file_path):
-        logger.error(f"File not found on the server: {file_path}")
-        return JsonResponse({"error": "File not found on the server!"}, status=404)
+        file_path = uploaded_file.file.path
+        if not os.path.exists(file_path):
+            logger.error(f"File not found on the server: {file_path}")
+            return Response({"error": "File not found on the server."}, status=status.HTTP_404_NOT_FOUND)
 
-    try:
-        # Upload file to Gemini API
-        uploaded_file = genai.upload_file(file_path)
+        try:
+            uploaded_file_to_gemini = genai.upload_file(file_path)
 
-        # Check if the upload was successful
-        if not uploaded_file.name:
-            logger.error("File upload to Gemini failed.")
-            return JsonResponse({"error": "Failed to upload file to Gemini."}, status=500)
+            if not uploaded_file_to_gemini.name:
+                logger.error("File upload to Gemini failed.")
+                return Response({"error": "Failed to upload file to Gemini."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-        # Use the Gemini API to generate content based on the uploaded file
-        model = genai.GenerativeModel("gemini-1.5-flash")
-        prompt = (
-            "Based on the content of this document, generate a quiz with exactly 10 questions. "
-            "Each question should include the following in JSON format:\n"
-            "- `question`: The text of the question.\n"
-            "- `options`: A list of 4 possible answers (strings).\n"
-            "- `correctAnswer`: The index (0, 1, 2, or 3) of the correct answer in the options.\n\n"
-            "The questions should test key details, themes, or topics from the document. Make the questions increase in difficulty. And make the questions relevant to the actual course material."
+            model = genai.GenerativeModel("gemini-1.5-flash")
+            prompt = (
+                "Based on the content of this document, generate a quiz with exactly 10 questions. "
+                "Each question should include the following in JSON format:\n"
+                "- `question`: The text of the question.\n"
+                "- `options`: A list of 4 possible answers (strings).\n"
+                "- `correctAnswer`: The index (0, 1, 2, or 3) of the correct answer in the options.\n\n"
+                "The questions should test key details, themes, or topics from the document. The questions should increase in difficulty and be relevant to the actual course material. The quiz should be in the dominant language of the document. Avoid questions about the context (Author, title, metadata) of the document and focus solely on the material."
+            )
+
+            response = model.generate_content([prompt, uploaded_file_to_gemini])
+            response_text = response.text.strip()
+
+            # Check if the response contains JSON
+            if response_text.startswith("```json") and response_text.endswith("```"):
+                response_text = response_text[7:-3].strip()
+
+            try:
+                quiz_content = json.loads(response_text)  # Parse the JSON response
+                return Response({"quiz": quiz_content}, status=status.HTTP_200_OK)
+            except json.JSONDecodeError as e:
+                logger.error(f"Failed to parse the generated content: {e}")
+                return Response({"error": "Failed to parse the generated content."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+        except Exception as e:
+            logger.exception(f"Error during quiz generation: {e}")
+            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class CreateLobbyView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        lobby_code = ''.join(random.choices(string.ascii_uppercase + string.digits, k=6))
+
+        # Create a new Lobby instance
+        lobby = Lobby.objects.create(
+            host=request.user,
+            lobby_id=lobby_code
         )
 
-        response = model.generate_content([prompt, uploaded_file])
+        # Add the host to the players list
+        lobby.players.add(request.user)
 
-        # Remove the triple backticks if they are in the response
-        if response.text.startswith("```json") and response.text.endswith("```"):
-            response_text = response.text[7:-3].strip()  # Remove the backticks and any extra whitespace
-        else:
-            response_text = response.text
+        return Response({
+            "lobby_id": lobby.id,
+            "code": lobby.lobby_id,
+            "host": lobby.host.username,
+            "players": [player.username for player in lobby.players.all()],
+        }, status=status.HTTP_201_CREATED)
 
-        # Directly return the raw JSON response from the Gemini API
+
+class JoinLobbyView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, code):
         try:
-            quiz_content = json.loads(response_text)  # Convert raw text into a JSON object
-            return JsonResponse({"quiz": quiz_content}, status=200)
-        except json.JSONDecodeError as e:
-            logger.error(f"Failed to parse the generated content: {e}")
-            return JsonResponse({"error": "Failed to parse the generated content."}, status=500)
+            lobby = Lobby.objects.get(lobby_id=code)
+        except Lobby.DoesNotExist:
+            return Response({"error": "Lobby not found"}, status=status.HTTP_404_NOT_FOUND)
 
-    except Exception as e:
-        # Log and return any exceptions that occur
-        logger.exception(f"Error during quiz generation: {e}")
-        return JsonResponse({"error": str(e)}, status=500)
+        # Check if the user is already in the lobby
+        if request.user in lobby.players.all():
+            return Response({"error": "You are already in this lobby"}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Add the user to the players list
+        lobby.players.add(request.user)
+
+        return Response({
+            "lobby_id": lobby.id,
+            "code": lobby.lobby_id,
+            "host": lobby.host.username,
+            "players": [player.username for player in lobby.players.all()],
+        }, status=status.HTTP_200_OK)
+
+
+class GetLobbyView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, code):
+        try:
+            lobby = Lobby.objects.get(lobby_id=code)
+        except Lobby.DoesNotExist:
+            return Response({"error": "Lobby not found"}, status=status.HTTP_404_NOT_FOUND)
+
+        return Response({
+            "lobby_id": lobby.id,
+            "code": lobby.lobby_id,
+            "host": lobby.host.username,
+            "players": [player.username for player in lobby.players.all()],
+            "status": lobby.status,
+        }, status=status.HTTP_200_OK)

@@ -1,5 +1,5 @@
 import axios from "axios";
-
+import { io } from "socket.io-client";
 
 const api = axios.create({
     baseURL: process.env.NEXT_PUBLIC_HOST
@@ -121,4 +121,22 @@ export const deleteFile = async (fileID: number) => {
         throw error; // Throw the error for the component to handle
     }
 };
+
+export const createWebSocketConnection = (lobbyCode: string, setLobbyData: (data: any) => void) => {
+  const socket = io(`ws://${process.env.NEXT_PUBLIC_HOST}/ws/lobby/${lobbyCode}/`); // replace with your backend URL
+  
+  // On receiving data from the server
+  socket.on('lobby_data', (data) => {
+    setLobbyData(data);  // Store received data to state
+  });
+
+  // Handle socket connection error
+  socket.on('connect_error', (err) => {
+    console.error("WebSocket connection error:", err);
+  });
+
+  return socket;
+};
+
+
 export default api;

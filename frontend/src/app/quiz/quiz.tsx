@@ -26,6 +26,8 @@ const QuizModals: React.FC<QuizModalsProps> = ({ quizData }) => {
   const [quizFinished, setQuizFinished] = useState(false); // Track whether the quiz is finished
   const [selectedOption, setSelectedOption] = useState<number | null>(null); // Track selected option
   const [showFeedback, setShowFeedback] = useState(false); // Track whether feedback is displayed
+  const [pointsScored, setPointsScored] = useState<number | null>(null); // Track points scored per turn
+  const [showPointsModal, setShowPointsModal] = useState(false); // Track whether to show the points modal
   const router = useRouter();
   const { fileID } = useAuth();
   const { high_score } = useAuth();
@@ -35,12 +37,7 @@ const QuizModals: React.FC<QuizModalsProps> = ({ quizData }) => {
     const points = Math.floor(
       (1 - (responseTime / questionTimer) / 2) * MAX_POINTS
     );
-    if(points > 0){
-      return points;
-    }
-    else{
-      return 0;
-    }
+    return points > 0 ? points : 0;
   };
 
   const handleNextQuestion = () => {
@@ -48,6 +45,7 @@ const QuizModals: React.FC<QuizModalsProps> = ({ quizData }) => {
     setTimeout(() => {
       setSelectedOption(null); // Reset selected option
       setShowFeedback(false); // Reset feedback
+      setShowPointsModal(false); // Hide points modal
       if (currentIndex + 1 >= quizData.length) {
         setQuizFinished(true); // Mark the quiz as finished after the last question
       } else {
@@ -70,10 +68,15 @@ const QuizModals: React.FC<QuizModalsProps> = ({ quizData }) => {
 
     if (optionIndex === correctAnswer) {
       const points = calculatePoints(responseTime, questionTimer);
-      setScore((prevScore) => prevScore + points); // Update the score
+      setPointsScored(points); // Set the points scored for this turn
+      setScore((prevScore) => prevScore + points); // Update the total score
+      setShowPointsModal(true); // Show points modal
     }
 
-    setTimeout(handleNextQuestion, 2000); // Delay before moving to the next question
+    setTimeout(() => {
+      setShowPointsModal(false); // Hide points modal after a brief display
+      setTimeout(handleNextQuestion, 200); // Delay before moving to the next question
+    }, 2000); // Points modal duration
   };
 
   useEffect(() => {
@@ -134,6 +137,27 @@ const QuizModals: React.FC<QuizModalsProps> = ({ quizData }) => {
         width: "100%",
       }}
     >
+      {showPointsModal && pointsScored !== null && (
+        <Slide direction="down" in={showPointsModal} mountOnEnter unmountOnExit>
+<Box
+  sx={{
+    position: "fixed", // Fixed to the viewport
+    top: "50%", // Center vertically
+    left: "43%", // Center horizontally
+    transform: "translate(-50%, -50%)", // Adjust position to center
+    padding: 2,
+    backgroundColor: "#fff",
+    borderRadius: 2,
+    boxShadow: 3,
+    zIndex: 10,
+  }}
+>
+  <Typography className="font-itim" variant="h6" color="success">
+    You got {pointsScored} points!
+  </Typography>
+</Box>
+        </Slide>
+      )}
       <Slide direction="left" in={inProp} mountOnEnter unmountOnExit>
         <Box
           sx={{
@@ -152,32 +176,33 @@ const QuizModals: React.FC<QuizModalsProps> = ({ quizData }) => {
           <Typography className="font-itim" variant="h5" gutterBottom>
             {quizData[currentIndex]?.question}
           </Typography>
-{quizData[currentIndex]?.options.map((option, index) => {
-  const isCorrect =
-    showFeedback && index === quizData[currentIndex].correctAnswer;
-  const isWrong = showFeedback && index !== quizData[currentIndex].correctAnswer;
-  const isSelected = index === selectedOption;
+          {quizData[currentIndex]?.options.map((option, index) => {
+            const isCorrect =
+              showFeedback && index === quizData[currentIndex].correctAnswer;
+            const isWrong =
+              showFeedback && index !== quizData[currentIndex].correctAnswer;
+            const isSelected = index === selectedOption;
 
-  return (
-    <button
-      key={index}
-      className={`font-itim w-full px-4 py-2 mb-2 rounded 
-        ${
-          showFeedback
-            ? isCorrect
-              ? "bg-green text-white" // Custom green for correct answer
-              : isSelected && isWrong
-              ? "bg-red text-white" // Custom red for wrong selected answer
-              : "bg-gray-200 text-black" // Neutral for other options
-            : "bg-dark-blue text-white" // Default state
-        }`}
-      onClick={() => handleAnswer(index)}
-      disabled={showFeedback} // Disable buttons after selection
-    >
-      {option}
-    </button>
-  );
-})}
+            return (
+              <button
+                key={index}
+                className={`font-itim w-full px-4 py-2 mb-2 rounded 
+                ${
+                  showFeedback
+                    ? isCorrect
+                      ? "bg-green text-white" // Custom green for correct answer
+                      : isSelected && isWrong
+                      ? "bg-red text-white" // Custom red for wrong selected answer
+                      : "bg-gray-200 text-black" // Neutral for other options
+                    : "bg-dark-blue text-white" // Default state
+                }`}
+                onClick={() => handleAnswer(index)}
+                disabled={showFeedback} // Disable buttons after selection
+              >
+                {option}
+              </button>
+            );
+          })}
         </Box>
       </Slide>
     </Box>
